@@ -1,6 +1,6 @@
-function [center, radius, area] = find_pupil(eyeImg)
+function [center, radius, area] = find_pupil(eyeImg, saveVid, grayVid, binVid, cleanVid, invVid, bboxVid, saveImg, frameCount)
     sensitivity = 0.000001;
-    minArea = 100;
+    minArea = 2000;
     
     grayImg = rgb2gray(eyeImg);
     
@@ -9,6 +9,7 @@ function [center, radius, area] = find_pupil(eyeImg)
                        'ForegroundPolarity', 'dark');
     
     cleaned = bwareaopen(binary, minArea);
+
     inverted = imcomplement(cleaned);
     
     [labeled, ~] = bwlabel(inverted);
@@ -45,4 +46,29 @@ function [center, radius, area] = find_pupil(eyeImg)
              pupilRegion.BoundingBox(2)+(pupilRegion.BoundingBox(4)/2)];
     radius = mean([pupilRegion.BoundingBox(3), pupilRegion.BoundingBox(4)]) / 2;
     area = pi * (radius ^ 2);
+
+    bboxesImg = im2uint8(inverted);
+    for k = 1:length(stats)
+        bboxesImg = insertShape(bboxesImg, 'rectangle', stats(k).BoundingBox, ...
+                    'Color', 'green', 'LineWidth', 2);
+    end
+    if nargin > 1 && saveVid
+        writeVideo(grayVid, grayImg);
+        writeVideo(binVid, im2uint8(binary));
+        writeVideo(cleanVid, im2uint8(cleaned));
+        writeVideo(invVid, im2uint8(inverted));
+        writeVideo(bboxVid, bboxesImg);
+    end
+
+    if nargin > 7 && saveImg && saveVid
+        baseFilename = sprintf('/img/pupil_detection_%d', frameCount);
+        
+        imwrite(eyeImg, [baseFilename '_original.png']);
+        
+        imwrite(grayImg, [baseFilename '_gray.png']);
+        imwrite(binary, [baseFilename '_binary.png']);
+        imwrite(cleaned, [baseFilename '_cleaned.png']);
+        imwrite(inverted, [baseFilename '_inverted.png']);
+        imwrite(bboxesImg, [baseFilename '_bboxes.png']);
+    end
 end
